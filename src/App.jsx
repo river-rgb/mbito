@@ -82,6 +82,7 @@ function App() {
           props: {
             text: "Welcome to your first Mbito app",
           },
+          events: {},
         },
       ],
       queries: [],
@@ -127,9 +128,8 @@ function App() {
         id,
         type: "text",
         layout: { ...baseLayout, width: 320, height: 90 },
-        props: {
-          text: "New text block",
-        },
+        props: { text: "New text block" },
+        events: {},
       };
     }
 
@@ -138,8 +138,9 @@ function App() {
         id,
         type: "button",
         layout: { ...baseLayout, width: 180, height: 70 },
-        props: {
-          label: "Click me",
+        props: { label: "Click me" },
+        events: {
+          onClick: `alert("Button clicked");`,
         },
       };
     }
@@ -155,6 +156,7 @@ function App() {
             { id: 2, name: "Bob", role: "Editor" },
           ],
         },
+        events: {},
       };
     }
 
@@ -165,6 +167,22 @@ function App() {
         layout: { ...baseLayout, width: 320, height: 260 },
         props: {
           fields: ["Name", "Email"],
+        },
+        events: {},
+      };
+    }
+
+    if (type === "image") {
+      newComponent = {
+        id,
+        type: "image",
+        layout: { ...baseLayout, width: 320, height: 220 },
+        props: {
+          src: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee",
+          alt: "Image",
+        },
+        events: {
+          onClick: `alert("Image clicked");`,
         },
       };
     }
@@ -189,6 +207,27 @@ function App() {
         props: {
           ...component.props,
           ...newProps,
+        },
+      };
+    });
+
+    updateSelectedSchema({
+      ...schema,
+      components: newComponents,
+    });
+  }
+
+  function updateComponentEvents(newEvents) {
+    const schema = selectedApp.app_schema;
+
+    const newComponents = schema.components.map((component) => {
+      if (component.id !== selectedComponentId) return component;
+
+      return {
+        ...component,
+        events: {
+          ...(component.events || {}),
+          ...newEvents,
         },
       };
     });
@@ -265,97 +304,161 @@ function App() {
     fetchApps();
   }
 
-function componentWrapper(component, content) {
-  const layout = component.layout || {
-    x: 40,
-    y: 40,
-    width: 240,
-    height: 100,
+function runComponentScript(component, eventName) {
+  const script = component.events?.[eventName];
+
+  if (!script || !script.trim()) return;
+
+  const url = {
+    href: window.location.href,
+    origin: window.location.origin,
+    pathname: window.location.pathname,
+    search: window.location.search,
+    hash: window.location.hash,
+    searchParams: Object.fromEntries(
+      new URLSearchParams(window.location.search).entries()
+    ),
   };
 
-  function startDrag(e) {
-    e.preventDefault();
-    e.stopPropagation();
+  const utils = {
+    openUrl(targetUrl, options = {}) {
+      const newTab = options.newTab ?? false;
+      const forceReload = options.forceReload ?? false;
 
-    setSelectedComponentId(component.id);
-
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const startLeft = layout.x ?? 40;
-    const startTop = layout.y ?? 40;
-
-    function onMove(moveEvent) {
-      updateComponentLayout(component.id, {
-        x: startLeft + moveEvent.clientX - startX,
-        y: startTop + moveEvent.clientY - startY,
-      });
-    }
-
-    function onUp() {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    }
-
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  }
-
-  function startResize(e) {
-    e.preventDefault();
-    e.stopPropagation();
-
-    setSelectedComponentId(component.id);
-
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const startWidth = layout.width ?? 240;
-    const startHeight = layout.height ?? 100;
-
-    function onMove(moveEvent) {
-      updateComponentLayout(component.id, {
-        width: Math.max(80, startWidth + moveEvent.clientX - startX),
-        height: Math.max(40, startHeight + moveEvent.clientY - startY),
-      });
-    }
-
-    function onUp() {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    }
-
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  }
-
-  return (
-    <div
-      className={
-        selectedComponentId === component.id
-          ? "component-shell selected"
-          : "component-shell"
+      if (newTab) {
+        window.open(targetUrl, "_blank");
+        return;
       }
-      style={{
-        position: "absolute",
-        left: layout.x ?? 40,
-        top: layout.y ?? 40,
-        width: layout.width ?? 240,
-        height: layout.height ?? 100,
-      }}
-      onClick={(e) => {
-        e.stopPropagation();
-        setSelectedComponentId(component.id);
-      }}
-    >
-      <div className="drag-handle" onMouseDown={startDrag}>
-        Drag
-      </div>
 
-      <div className="component-content">{content}</div>
+      if (forceReload) {
+        window.location.href = targetUrl;
+        return;
+      }
 
-      <div className="resize-handle" onMouseDown={startResize} />
-    </div>
-  );
+      window.location.assign(targetUrl);
+    },
+  };
+
+  try {
+    const runner = new Function(
+      "component",
+      "props",
+      "layout",
+      "app",
+      "url",
+      "utils",
+      "alert",
+      "console",
+      script
+    );
+
+    runner(
+      component,
+      component.props || {},
+      component.layout || {},
+      selectedApp,
+      url,
+      utils,
+      alert,
+      console
+    );
+  } catch (error) {
+    alert(`Script error: ${error.message}`);
+  }
 }
+
+  function componentWrapper(component, content) {
+    const layout = component.layout || {
+      x: 40,
+      y: 40,
+      width: 240,
+      height: 100,
+    };
+
+    function startDrag(e) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      setSelectedComponentId(component.id);
+
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startLeft = layout.x ?? 40;
+      const startTop = layout.y ?? 40;
+
+      function onMove(moveEvent) {
+        updateComponentLayout(component.id, {
+          x: startLeft + moveEvent.clientX - startX,
+          y: startTop + moveEvent.clientY - startY,
+        });
+      }
+
+      function onUp() {
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onUp);
+      }
+
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onUp);
+    }
+
+    function startResize(e) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      setSelectedComponentId(component.id);
+
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startWidth = layout.width ?? 240;
+      const startHeight = layout.height ?? 100;
+
+      function onMove(moveEvent) {
+        updateComponentLayout(component.id, {
+          width: Math.max(80, startWidth + moveEvent.clientX - startX),
+          height: Math.max(40, startHeight + moveEvent.clientY - startY),
+        });
+      }
+
+      function onUp() {
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onUp);
+      }
+
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onUp);
+    }
+
+    return (
+      <div
+        className={
+          selectedComponentId === component.id
+            ? "component-shell selected"
+            : "component-shell"
+        }
+        style={{
+          position: "absolute",
+          left: layout.x ?? 40,
+          top: layout.y ?? 40,
+          width: layout.width ?? 240,
+          height: layout.height ?? 100,
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setSelectedComponentId(component.id);
+        }}
+      >
+        <div className="drag-handle" onMouseDown={startDrag}>
+          Drag
+        </div>
+
+        <div className="component-content">{content}</div>
+
+        <div className="resize-handle" onMouseDown={startResize} />
+      </div>
+    );
+  }
+
   function renderComponent(component) {
     if (component.type === "text") {
       return componentWrapper(
@@ -367,7 +470,15 @@ function componentWrapper(component, content) {
     if (component.type === "button") {
       return componentWrapper(
         component,
-        <button type="button" className="preview-button">
+        <button
+          type="button"
+          className="preview-button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelectedComponentId(component.id);
+            runComponentScript(component, "onClick");
+          }}
+        >
           {component.props?.label}
         </button>
       );
@@ -413,6 +524,22 @@ function componentWrapper(component, content) {
 
           <button type="button">Submit</button>
         </form>
+      );
+    }
+
+    if (component.type === "image") {
+      return componentWrapper(
+        component,
+        <img
+          className="preview-image clickable-image"
+          src={component.props?.src}
+          alt={component.props?.alt || ""}
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelectedComponentId(component.id);
+            runComponentScript(component, "onClick");
+          }}
+        />
       );
     }
 
@@ -473,13 +600,28 @@ function componentWrapper(component, content) {
         )}
 
         {selectedComponent.type === "button" && (
-          <label className="inspector-field">
-            Label
-            <input
-              value={selectedComponent.props?.label || ""}
-              onChange={(e) => updateComponentProps({ label: e.target.value })}
-            />
-          </label>
+          <>
+            <label className="inspector-field">
+              Label
+              <input
+                value={selectedComponent.props?.label || ""}
+                onChange={(e) =>
+                  updateComponentProps({ label: e.target.value })
+                }
+              />
+            </label>
+
+            <label className="inspector-field">
+              On Click Script
+              <textarea
+                value={selectedComponent.events?.onClick || ""}
+                onChange={(e) =>
+                  updateComponentEvents({ onClick: e.target.value })
+                }
+                placeholder='alert("Button clicked");'
+              />
+            </label>
+          </>
         )}
 
         {selectedComponent.type === "form" && (
@@ -497,6 +639,45 @@ function componentWrapper(component, content) {
               }
             />
           </label>
+        )}
+
+        {selectedComponent.type === "image" && (
+          <>
+            <label className="inspector-field">
+              Image URL
+              <input
+                value={selectedComponent.props?.src || ""}
+                onChange={(e) => updateComponentProps({ src: e.target.value })}
+              />
+            </label>
+
+            <label className="inspector-field">
+              Alt text
+              <input
+                value={selectedComponent.props?.alt || ""}
+                onChange={(e) => updateComponentProps({ alt: e.target.value })}
+              />
+            </label>
+
+            <label className="inspector-field">
+              On Click Script
+              <textarea
+                value={selectedComponent.events?.onClick || ""}
+                onChange={(e) =>
+                  updateComponentEvents({ onClick: e.target.value })
+                }
+                placeholder='alert("Image clicked");'
+              />
+            </label>
+
+            <div className="script-help">
+              Available variables:
+              <code>component</code>
+              <code>props</code>
+              <code>layout</code>
+              <code>app</code>
+            </div>
+          </>
         )}
 
         {selectedComponent.type === "table" && (
@@ -529,6 +710,7 @@ function componentWrapper(component, content) {
             <button onClick={() => addComponent("button")}>Button</button>
             <button onClick={() => addComponent("table")}>Table</button>
             <button onClick={() => addComponent("form")}>Form</button>
+            <button onClick={() => addComponent("image")}>Image</button>
           </div>
         </aside>
 
@@ -536,7 +718,7 @@ function componentWrapper(component, content) {
           <header className="builder-header">
             <div>
               <h1>{selectedApp.name}</h1>
-              <p>Drag and resize components freely</p>
+              <p>Drag, resize, and add Retool-style scripts</p>
             </div>
 
             <button onClick={saveApp} disabled={saving}>
