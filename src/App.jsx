@@ -422,18 +422,19 @@ events: {},
       };
     }
 
-    if (type === "image") {
-      newComponent = {
-        id,
-        type: "image",
-        layout: { ...baseLayout, width: 320, height: 220 },
-        props: {
-          src: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee",
-          alt: "Image",
-        },
-events: {},
-      };
-    }
+if (type === "image") {
+  newComponent = {
+    id,
+    type: "image",
+    layout: { ...baseLayout, width: 320, height: 220 },
+    props: {
+      src: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee",
+      alt: "Image",
+      fitMode: "responsive",
+    },
+    events: {},
+  };
+}
 
     updateSelectedSchema({
       ...schema,
@@ -766,7 +767,7 @@ return (
       return componentWrapper(
         component,
         <img
-          className="preview-image clickable-image"
+className={`preview-image clickable-image ${component.props?.fitMode || "responsive"}`}
           src={component.props?.src}
           alt={component.props?.alt || ""}
           onClick={(e) => {
@@ -981,35 +982,47 @@ return (
           </>
         )}
 
-        {selectedComponent.type === "image" && (
-          <>
-            <label className="inspector-field">
-              Image URL
-              <input
-                value={selectedComponent.props?.src || ""}
-                onChange={(e) => updateComponentProps({ src: e.target.value })}
-              />
-            </label>
+{selectedComponent.type === "image" && (
+  <>
+    <label className="inspector-field">
+      Image URL
+      <input
+        value={selectedComponent.props?.src || ""}
+        onChange={(e) => updateComponentProps({ src: e.target.value })}
+      />
+    </label>
 
-            <label className="inspector-field">
-              Alt text
-              <input
-                value={selectedComponent.props?.alt || ""}
-                onChange={(e) => updateComponentProps({ alt: e.target.value })}
-              />
-            </label>
+    <label className="inspector-field">
+      Alt text
+      <input
+        value={selectedComponent.props?.alt || ""}
+        onChange={(e) => updateComponentProps({ alt: e.target.value })}
+      />
+    </label>
 
-            <label className="inspector-field">
-              On Click Script
-              <textarea
-                value={selectedComponent.events?.onClick || ""}
-                onChange={(e) =>
-                  updateComponentEvents({ onClick: e.target.value })
-                }
-              />
-            </label>
-          </>
-        )}
+    <label className="inspector-field">
+      Fit Mode
+      <select
+        value={selectedComponent.props?.fitMode || "responsive"}
+        onChange={(e) => updateComponentProps({ fitMode: e.target.value })}
+      >
+        <option value="responsive">Responsive</option>
+        <option value="cover">Cover</option>
+        <option value="contain">Contain</option>
+      </select>
+    </label>
+
+    <label className="inspector-field">
+      On Click Script
+      <textarea
+        value={selectedComponent.events?.onClick || ""}
+        onChange={(e) =>
+          updateComponentEvents({ onClick: e.target.value })
+        }
+      />
+    </label>
+  </>
+)}
 
         <button className="danger-button" onClick={deleteSelectedComponent}>
           Delete component
@@ -1052,7 +1065,7 @@ return (
               return (
                 <img
                   key={component.id}
-                  className="runtime-component runtime-image"
+className={`runtime-component runtime-image ${component.props?.fitMode || "responsive"}`}
                   src={component.props?.src}
                   alt={component.props?.alt || ""}
                   style={{
