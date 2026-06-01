@@ -1,3 +1,156 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f6f7fb;
+  color: #111827;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.auth-page,
+.app {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+.auth-card {
+  width: 360px;
+  background: white;
+  padding: 32px;
+  border-radius: 18px;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+  display: grid;
+  gap: 14px;
+}
+
+.auth-card h1 {
+  margin: 0;
+}
+
+.auth-card p {
+  margin: 0 0 12px;
+  color: #6b7280;
+}
+
+input,
+textarea {
+  padding: 12px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+}
+
+button {
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: #111827;
+  color: white;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dashboard {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+}
+
+.sidebar {
+  background: #111827;
+  color: white;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.sidebar h2 {
+  margin: 0;
+}
+
+.sidebar p {
+  color: #9ca3af;
+}
+
+.sidebar button {
+  background: white;
+  color: #111827;
+}
+
+.main {
+  padding: 32px;
+}
+
+.main-header {
+  margin-bottom: 24px;
+}
+
+.main-header h1 {
+  margin: 0;
+}
+
+.main-header p {
+  color: #6b7280;
+}
+
+.new-app-card,
+.empty-card,
+.app-card {
+  background: white;
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+.new-app-card {
+  margin-bottom: 24px;
+}
+
+.new-app-card h3,
+.empty-card h3,
+.app-card h3 {
+  margin-top: 0;
+}
+
+.new-app-row {
+  display: flex;
+  gap: 12px;
+}
+
+.new-app-row input {
+  flex: 1;
+}
+
+.apps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 18px;
+}
+
+.app-card p,
+.empty-card p {
+  color: #6b7280;
+}
+
+.app-card span {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 13px;
+}
+
 .app-card-button {
   text-align: left;
   color: inherit;
@@ -73,56 +226,77 @@
 }
 
 .preview-panel {
-  min-height: 500px;
+  min-height: 650px;
   background: white;
   border-radius: 14px;
   padding: 24px;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.component-shell {
+  border: 2px solid transparent;
+  border-radius: 12px;
+  padding: 8px;
+  cursor: move;
+  user-select: none;
+  background: transparent;
+  box-sizing: border-box;
+}
+
+.component-shell:hover {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.component-shell.selected {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.drag-handle {
+  height: 22px;
+  line-height: 22px;
+  font-size: 11px;
+  color: #6b7280;
+  cursor: move;
+  user-select: none;
+  margin-bottom: 4px;
+  background: #f3f4f6;
+  border-radius: 6px;
+  padding: 0 8px;
+  box-sizing: border-box;
+}
+
+.component-content {
+  width: 100%;
+  height: calc(100% - 26px);
+  box-sizing: border-box;
+}
+
+.component-content > * {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
 }
 
 .preview-text {
   font-size: 24px;
   font-weight: 700;
-  margin-bottom: 16px;
-}
-
-.preview-unknown,
-.empty-preview {
-  color: #6b7280;
-}
-
-.builder-inspector {
-  background: white;
-  border-left: 1px solid #e5e7eb;
-  padding: 20px;
   overflow: auto;
 }
 
-.builder-inspector h3 {
-  margin-top: 0;
-}
-
-.builder-inspector p {
-  color: #6b7280;
-}
-
-.builder-inspector pre {
-  background: #f3f4f6;
-  padding: 12px;
-  border-radius: 12px;
-  overflow: auto;
-  font-size: 12px;
-}
 .preview-button {
-  margin: 12px 0;
   background: #2563eb;
 }
 
 .preview-table {
   width: 100%;
+  height: 100%;
   border-collapse: collapse;
-  margin: 16px 0;
   background: white;
+  overflow: auto;
 }
 
 .preview-table th,
@@ -139,12 +313,144 @@
 .preview-form {
   display: grid;
   gap: 12px;
-  max-width: 360px;
-  margin-top: 16px;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
 }
 
 .preview-form label {
   display: grid;
   gap: 6px;
   font-weight: 600;
+}
+
+.preview-unknown,
+.empty-preview {
+  color: #6b7280;
+}
+
+.builder-inspector {
+  background: white;
+  border-left: 1px solid #e5e7eb;
+  padding: 20px;
+  overflow: auto;
+}
+
+.builder-inspector h3 {
+  margin-top: 0;
+  text-transform: capitalize;
+}
+
+.builder-inspector p {
+  color: #6b7280;
+}
+
+.builder-inspector pre {
+  background: #f3f4f6;
+  padding: 12px;
+  border-radius: 12px;
+  overflow: auto;
+  font-size: 12px;
+}
+
+.inspector-field {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.inspector-field textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.layout-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.layout-grid label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.layout-grid input {
+  background: #f9fafb;
+  color: #6b7280;
+}
+
+.danger-button {
+  background: #dc2626;
+  color: white;
+}
+.drag-handle {
+  height: 18px;
+  font-size: 11px;
+  color: #6b7280;
+  cursor: move;
+  user-select: none;
+  margin-bottom: 4px;
+}
+
+.component-content {
+  width: 100%;
+  height: calc(100% - 22px);
+}
+.drag-handle {
+  height: 24px;
+  line-height: 24px;
+  font-size: 12px;
+  color: #374151;
+  cursor: move;
+  user-select: none;
+  background: #e5e7eb;
+  border-radius: 6px;
+  padding: 0 8px;
+  margin-bottom: 6px;
+  box-sizing: border-box;
+}
+
+.component-content {
+  width: 100%;
+  height: calc(100% - 30px);
+  box-sizing: border-box;
+}
+
+.component-content > * {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+.drag-handle {
+  height: 24px;
+  line-height: 24px;
+  background: #e5e7eb;
+  color: #374151;
+  font-size: 12px;
+  border-radius: 6px;
+  padding: 0 8px;
+  cursor: move;
+  user-select: none;
+  margin-bottom: 6px;
+}
+
+.component-content {
+  height: calc(100% - 34px);
+  overflow: auto;
+}
+
+.resize-handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  right: 3px;
+  bottom: 3px;
+  background: #2563eb;
+  border-radius: 4px;
+  cursor: nwse-resize;
 }

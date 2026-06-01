@@ -11,6 +11,7 @@ function App() {
   const [apps, setApps] = useState([]);
   const [appName, setAppName] = useState("");
   const [selectedApp, setSelectedApp] = useState(null);
+  const [selectedComponentId, setSelectedComponentId] = useState(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -77,6 +78,7 @@ function App() {
         {
           id: "text1",
           type: "text",
+          layout: { x: 40, y: 40, width: 360, height: 90 },
           props: {
             text: "Welcome to your first Mbito app",
           },
@@ -103,10 +105,10 @@ function App() {
   }
 
   function updateSelectedSchema(newSchema) {
-    setSelectedApp({
-      ...selectedApp,
+    setSelectedApp((currentApp) => ({
+      ...currentApp,
       app_schema: newSchema,
-    });
+    }));
   }
 
   function addComponent(type) {
@@ -116,6 +118,7 @@ function App() {
     };
 
     const id = `${type}${Date.now()}`;
+    const baseLayout = { x: 60, y: 60, width: 260, height: 100 };
 
     let newComponent;
 
@@ -123,6 +126,7 @@ function App() {
       newComponent = {
         id,
         type: "text",
+        layout: { ...baseLayout, width: 320, height: 90 },
         props: {
           text: "New text block",
         },
@@ -133,6 +137,7 @@ function App() {
       newComponent = {
         id,
         type: "button",
+        layout: { ...baseLayout, width: 180, height: 70 },
         props: {
           label: "Click me",
         },
@@ -143,6 +148,7 @@ function App() {
       newComponent = {
         id,
         type: "table",
+        layout: { ...baseLayout, width: 420, height: 180 },
         props: {
           data: [
             { id: 1, name: "Alice", role: "Admin" },
@@ -156,6 +162,7 @@ function App() {
       newComponent = {
         id,
         type: "form",
+        layout: { ...baseLayout, width: 320, height: 260 },
         props: {
           fields: ["Name", "Email"],
         },
@@ -168,6 +175,72 @@ function App() {
     };
 
     updateSelectedSchema(newSchema);
+    setSelectedComponentId(id);
+  }
+
+  function updateComponentProps(newProps) {
+    const schema = selectedApp.app_schema;
+
+    const newComponents = schema.components.map((component) => {
+      if (component.id !== selectedComponentId) return component;
+
+      return {
+        ...component,
+        props: {
+          ...component.props,
+          ...newProps,
+        },
+      };
+    });
+
+    updateSelectedSchema({
+      ...schema,
+      components: newComponents,
+    });
+  }
+
+  function updateComponentLayout(componentId, newLayout) {
+    setSelectedApp((currentApp) => {
+      const schema = currentApp.app_schema || {
+        components: [],
+        queries: [],
+      };
+
+      const newComponents = schema.components.map((component) => {
+        if (component.id !== componentId) return component;
+
+        return {
+          ...component,
+          layout: {
+            ...(component.layout || {}),
+            ...newLayout,
+          },
+        };
+      });
+
+      return {
+        ...currentApp,
+        app_schema: {
+          ...schema,
+          components: newComponents,
+        },
+      };
+    });
+  }
+
+  function deleteSelectedComponent() {
+    const schema = selectedApp.app_schema;
+
+    const newComponents = schema.components.filter(
+      (component) => component.id !== selectedComponentId
+    );
+
+    updateSelectedSchema({
+      ...schema,
+      components: newComponents,
+    });
+
+    setSelectedComponentId(null);
   }
 
   async function saveApp() {
@@ -192,18 +265,109 @@ function App() {
     fetchApps();
   }
 
+function componentWrapper(component, content) {
+  const layout = component.layout || {
+    x: 40,
+    y: 40,
+    width: 240,
+    height: 100,
+  };
+
+  function startDrag(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    setSelectedComponentId(component.id);
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startLeft = layout.x ?? 40;
+    const startTop = layout.y ?? 40;
+
+    function onMove(moveEvent) {
+      updateComponentLayout(component.id, {
+        x: startLeft + moveEvent.clientX - startX,
+        y: startTop + moveEvent.clientY - startY,
+      });
+    }
+
+    function onUp() {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    }
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }
+
+  function startResize(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    setSelectedComponentId(component.id);
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startWidth = layout.width ?? 240;
+    const startHeight = layout.height ?? 100;
+
+    function onMove(moveEvent) {
+      updateComponentLayout(component.id, {
+        width: Math.max(80, startWidth + moveEvent.clientX - startX),
+        height: Math.max(40, startHeight + moveEvent.clientY - startY),
+      });
+    }
+
+    function onUp() {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    }
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }
+
+  return (
+    <div
+      className={
+        selectedComponentId === component.id
+          ? "component-shell selected"
+          : "component-shell"
+      }
+      style={{
+        position: "absolute",
+        left: layout.x ?? 40,
+        top: layout.y ?? 40,
+        width: layout.width ?? 240,
+        height: layout.height ?? 100,
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        setSelectedComponentId(component.id);
+      }}
+    >
+      <div className="drag-handle" onMouseDown={startDrag}>
+        Drag
+      </div>
+
+      <div className="component-content">{content}</div>
+
+      <div className="resize-handle" onMouseDown={startResize} />
+    </div>
+  );
+}
   function renderComponent(component) {
     if (component.type === "text") {
-      return (
-        <div className="preview-text" key={component.id}>
-          {component.props?.text}
-        </div>
+      return componentWrapper(
+        component,
+        <div className="preview-text">{component.props?.text}</div>
       );
     }
 
     if (component.type === "button") {
-      return (
-        <button className="preview-button" key={component.id}>
+      return componentWrapper(
+        component,
+        <button type="button" className="preview-button">
           {component.props?.label}
         </button>
       );
@@ -212,8 +376,9 @@ function App() {
     if (component.type === "table") {
       const rows = component.props?.data || [];
 
-      return (
-        <table className="preview-table" key={component.id}>
+      return componentWrapper(
+        component,
+        <table className="preview-table">
           <thead>
             <tr>
               {Object.keys(rows[0] || {}).map((key) => (
@@ -236,8 +401,9 @@ function App() {
     }
 
     if (component.type === "form") {
-      return (
-        <form className="preview-form" key={component.id}>
+      return componentWrapper(
+        component,
+        <form className="preview-form">
           {component.props?.fields?.map((field) => (
             <label key={field}>
               {field}
@@ -250,10 +416,97 @@ function App() {
       );
     }
 
+    return componentWrapper(
+      component,
+      <div className="preview-unknown">Unknown component: {component.type}</div>
+    );
+  }
+
+  function renderInspector(schema) {
+    const selectedComponent = schema.components?.find(
+      (component) => component.id === selectedComponentId
+    );
+
+    if (!selectedComponent) {
+      return (
+        <>
+          <h3>Inspector</h3>
+          <p>Select a component to edit its properties.</p>
+          <pre>{JSON.stringify(schema, null, 2)}</pre>
+        </>
+      );
+    }
+
+    const layout = selectedComponent.layout || {};
+
     return (
-      <div className="preview-unknown" key={component.id}>
-        Unknown component: {component.type}
-      </div>
+      <>
+        <h3>{selectedComponent.type}</h3>
+
+        <div className="layout-grid">
+          <label>
+            X
+            <input value={layout.x ?? 0} readOnly />
+          </label>
+          <label>
+            Y
+            <input value={layout.y ?? 0} readOnly />
+          </label>
+          <label>
+            Width
+            <input value={layout.width ?? ""} readOnly />
+          </label>
+          <label>
+            Height
+            <input value={layout.height ?? ""} readOnly />
+          </label>
+        </div>
+
+        {selectedComponent.type === "text" && (
+          <label className="inspector-field">
+            Text
+            <textarea
+              value={selectedComponent.props?.text || ""}
+              onChange={(e) => updateComponentProps({ text: e.target.value })}
+            />
+          </label>
+        )}
+
+        {selectedComponent.type === "button" && (
+          <label className="inspector-field">
+            Label
+            <input
+              value={selectedComponent.props?.label || ""}
+              onChange={(e) => updateComponentProps({ label: e.target.value })}
+            />
+          </label>
+        )}
+
+        {selectedComponent.type === "form" && (
+          <label className="inspector-field">
+            Fields
+            <textarea
+              value={(selectedComponent.props?.fields || []).join(", ")}
+              onChange={(e) =>
+                updateComponentProps({
+                  fields: e.target.value
+                    .split(",")
+                    .map((item) => item.trim())
+                    .filter(Boolean),
+                })
+              }
+            />
+          </label>
+        )}
+
+        {selectedComponent.type === "table" && (
+          <p>Sample table editing comes later.</p>
+        )}
+
+        <button className="danger-button" onClick={deleteSelectedComponent}>
+          Delete component
+        </button>
+      </>
     );
   }
 
@@ -283,7 +536,7 @@ function App() {
           <header className="builder-header">
             <div>
               <h1>{selectedApp.name}</h1>
-              <p>Draft app schema renderer</p>
+              <p>Drag and resize components freely</p>
             </div>
 
             <button onClick={saveApp} disabled={saving}>
@@ -292,7 +545,10 @@ function App() {
           </header>
 
           <section className="builder-canvas">
-            <div className="preview-panel">
+            <div
+              className="preview-panel"
+              onClick={() => setSelectedComponentId(null)}
+            >
               {schema.components?.length ? (
                 schema.components.map(renderComponent)
               ) : (
@@ -302,10 +558,8 @@ function App() {
           </section>
         </main>
 
-        <aside className="builder-inspector">
-          <h3>Inspector</h3>
-          <p>Current app schema.</p>
-          <pre>{JSON.stringify(schema, null, 2)}</pre>
+        <aside className="builder-inspector" onClick={(e) => e.stopPropagation()}>
+          {renderInspector(schema)}
         </aside>
       </div>
     );
