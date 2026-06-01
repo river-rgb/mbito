@@ -1277,22 +1277,26 @@ if (publicApp) {
               </div>
             ) : (
               apps.map((app) => (
-                <button
-                  className="app-card app-card-button"
-                  key={app.id}
-                  onClick={() => setSelectedApp(app)}
-                >
-                  <h3>{app.name}</h3>
-                  <p>/{app.slug}</p>
-                  <span>{app.published ? "Published" : "Draft"}</span>
-                </button>
-              ))
-            )}
-          </section>
-        </main>
-      </div>
-    );
-  }
+               <div className="app-card" key={app.id}>
+  <button
+    className="app-card-open"
+    onClick={() => setSelectedApp(app)}
+  >
+    <h3>{app.name}</h3>
+    <p>/{app.slug}</p>
+    <span>{app.published ? "Published" : "Draft"}</span>
+  </button>
+
+  <button
+    className="delete-app-button"
+    onClick={(e) => {
+      e.stopPropagation();
+      deleteApp(app.id);
+    }}
+  >
+    Delete
+  </button>
+</div>
 
   return (
     <div className="auth-page">
