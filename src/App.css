@@ -602,3 +602,30 @@ button:disabled {
   text-align: left;
   overflow: visible;
 }
+.public-runtime {
+  min-height: 100vh;
+  background: white;
+  overflow: visible;
+}
+
+.public-canvas {
+  position: relative;
+  min-height: 3000px;
+  background: white;
+  overflow: visible;
+}
+
+.runtime-component {
+  position: absolute;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+.runtime-text {
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  text-align: left;
+  overflow: visible;
+}
