@@ -574,3 +574,16 @@ button:disabled {
   width: 100%;
   background: #dc2626;
 }
+.app-card-open {
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.delete-app-button {
+  margin-top: 14px;
+  width: 100%;
+  background: #dc2626;
+}

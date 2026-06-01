@@ -15,8 +15,9 @@ function App() {
   const [selectedQueryId, setSelectedQueryId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [queryResults, setQueryResults] = useState({});
-const [publicApp, setPublicApp] = useState(null);
-const [publicLoading, setPublicLoading] = useState(true);
+  const [publicApp, setPublicApp] = useState(null);
+  const [publicLoading, setPublicLoading] = useState(true);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
@@ -30,37 +31,57 @@ const [publicLoading, setPublicLoading] = useState(true);
 
     return () => subscription.unsubscribe();
   }, []);
-useEffect(() => {
-  async function loadPublicApp() {
-    const slug = getSubdomainSlug();
 
-    if (!slug) {
+  useEffect(() => {
+    async function loadPublicApp() {
+      const slug = getSubdomainSlug();
+
+      if (!slug) {
+        setPublicLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("apps")
+        .select("*")
+        .eq("slug", slug)
+        .eq("published", true)
+        .single();
+
+      if (error || !data) {
+        setPublicApp(null);
+        setPublicLoading(false);
+        return;
+      }
+
+      setPublicApp(data);
       setPublicLoading(false);
-      return;
     }
 
-    const { data, error } = await supabase
-      .from("apps")
-      .select("*")
-      .eq("slug", slug)
-      .eq("published", true)
-      .single();
+    loadPublicApp();
+  }, []);
 
-    if (error || !data) {
-      setPublicApp(null);
-      setPublicLoading(false);
-      return;
-    }
-
-    setPublicApp(data);
-    setPublicLoading(false);
-  }
-
-  loadPublicApp();
-}, []);
   useEffect(() => {
     if (session) fetchApps();
   }, [session]);
+
+  function getSubdomainSlug() {
+    const host = window.location.hostname;
+
+    if (
+      host === "mbito.org" ||
+      host === "www.mbito.org" ||
+      host.includes("localhost")
+    ) {
+      return null;
+    }
+
+    if (host.endsWith(".mbito.org")) {
+      return host.replace(".mbito.org", "");
+    }
+
+    return null;
+  }
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -74,40 +95,6 @@ useEffect(() => {
     setLoading(false);
     if (error) alert(error.message);
   }
-  async function deleteApp(appId) {
-  const confirmed = confirm("Delete this app permanently?");
-
-  if (!confirmed) return;
-
-  const { error } = await supabase
-    .from("apps")
-    .delete()
-    .eq("id", appId);
-
-  if (error) {
-    alert(error.message);
-    return;
-  }
-
-  setApps((current) => current.filter((app) => app.id !== appId));
-
-  if (selectedApp?.id === appId) {
-    setSelectedApp(null);
-  }
-}
-function getSubdomainSlug() {
-  const host = window.location.hostname;
-
-  if (host === "mbito.org" || host === "www.mbito.org" || host.includes("localhost")) {
-    return null;
-  }
-
-  if (host.endsWith(".mbito.org")) {
-    return host.replace(".mbito.org", "");
-  }
-
-  return null;
-}
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -125,6 +112,24 @@ function getSubdomainSlug() {
     }
 
     setApps(data || []);
+  }
+
+  async function deleteApp(appId) {
+    const confirmed = confirm("Delete this app permanently?");
+    if (!confirmed) return;
+
+    const { error } = await supabase.from("apps").delete().eq("id", appId);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setApps((current) => current.filter((app) => app.id !== appId));
+
+    if (selectedApp?.id === appId) {
+      setSelectedApp(null);
+    }
   }
 
   function getPublishedUrl(app) {
@@ -453,7 +458,10 @@ function getSubdomainSlug() {
       ...schema,
       components: schema.components.map((component) =>
         component.id === selectedComponentId
-          ? { ...component, events: { ...(component.events || {}), ...newEvents } }
+          ? {
+              ...component,
+              events: { ...(component.events || {}), ...newEvents },
+            }
           : component
       ),
     });
@@ -1002,143 +1010,141 @@ function getSubdomainSlug() {
       </>
     );
   }
-if (publicLoading) {
-  return (
-    <div className="public-loading">
-      Loading app...
-    </div>
-  );
-}
 
-if (publicApp) {
-  const schema = publicApp.app_schema || { components: [], queries: [] };
+  if (publicLoading) {
+    return <div className="public-loading">Loading app...</div>;
+  }
 
-  return (
-    <div className="public-runtime">
-      <div className="public-canvas">
-        {(schema.components || []).map((component) => {
-          const layout = component.layout || {};
+  if (publicApp) {
+    const schema = publicApp.app_schema || { components: [], queries: [] };
 
-          if (component.type === "text") {
-            return (
-              <div
-                key={component.id}
-                className="runtime-component runtime-text"
-                style={{
-                  left: layout.x ?? 40,
-                  top: layout.y ?? 40,
-                  width: layout.width ?? 240,
-                  height: layout.height ?? 100,
-                }}
-              >
-                {component.props?.text}
-              </div>
-            );
-          }
+    return (
+      <div className="public-runtime">
+        <div className="public-canvas">
+          {(schema.components || []).map((component) => {
+            const layout = component.layout || {};
 
-          if (component.type === "image") {
-            return (
-              <img
-                key={component.id}
-                className="runtime-component runtime-image"
-                src={component.props?.src}
-                alt={component.props?.alt || ""}
-                style={{
-                  left: layout.x ?? 40,
-                  top: layout.y ?? 40,
-                  width: layout.width ?? 240,
-                  height: layout.height ?? 100,
-                }}
-              />
-            );
-          }
+            if (component.type === "text") {
+              return (
+                <div
+                  key={component.id}
+                  className="runtime-component runtime-text"
+                  style={{
+                    left: layout.x ?? 40,
+                    top: layout.y ?? 40,
+                    width: layout.width ?? 240,
+                    height: layout.height ?? 100,
+                  }}
+                >
+                  {component.props?.text}
+                </div>
+              );
+            }
 
-          if (component.type === "button") {
-            return (
-              <button
-                key={component.id}
-                className="runtime-component runtime-button"
-                style={{
-                  left: layout.x ?? 40,
-                  top: layout.y ?? 40,
-                  width: layout.width ?? 180,
-                  height: layout.height ?? 70,
-                }}
-              >
-                {component.props?.label}
-              </button>
-            );
-          }
+            if (component.type === "image") {
+              return (
+                <img
+                  key={component.id}
+                  className="runtime-component runtime-image"
+                  src={component.props?.src}
+                  alt={component.props?.alt || ""}
+                  style={{
+                    left: layout.x ?? 40,
+                    top: layout.y ?? 40,
+                    width: layout.width ?? 240,
+                    height: layout.height ?? 100,
+                  }}
+                />
+              );
+            }
 
-          if (component.type === "form") {
-            return (
-              <form
-                key={component.id}
-                className="runtime-component runtime-form"
-                style={{
-                  left: layout.x ?? 40,
-                  top: layout.y ?? 40,
-                  width: layout.width ?? 320,
-                  height: layout.height ?? 260,
-                }}
-              >
-                {(component.props?.fields || []).map((field) => (
-                  <label key={field}>
-                    {field}
-                    <input type="text" placeholder={field} />
-                  </label>
-                ))}
+            if (component.type === "button") {
+              return (
+                <button
+                  key={component.id}
+                  className="runtime-component runtime-button"
+                  style={{
+                    left: layout.x ?? 40,
+                    top: layout.y ?? 40,
+                    width: layout.width ?? 180,
+                    height: layout.height ?? 70,
+                  }}
+                >
+                  {component.props?.label}
+                </button>
+              );
+            }
 
-                <button type="button">Submit</button>
-              </form>
-            );
-          }
+            if (component.type === "form") {
+              return (
+                <form
+                  key={component.id}
+                  className="runtime-component runtime-form"
+                  style={{
+                    left: layout.x ?? 40,
+                    top: layout.y ?? 40,
+                    width: layout.width ?? 320,
+                    height: layout.height ?? 260,
+                  }}
+                >
+                  {(component.props?.fields || []).map((field) => (
+                    <label key={field}>
+                      {field}
+                      <input type="text" placeholder={field} />
+                    </label>
+                  ))}
 
-          if (component.type === "table") {
-            const rows = component.props?.data || [];
+                  <button type="button">Submit</button>
+                </form>
+              );
+            }
 
-            return (
-              <table
-                key={component.id}
-                className="runtime-component runtime-table"
-                style={{
-                  left: layout.x ?? 40,
-                  top: layout.y ?? 40,
-                  width: layout.width ?? 420,
-                  height: layout.height ?? 180,
-                }}
-              >
-                <thead>
-                  <tr>
-                    {Object.keys(rows[0] || {}).map((key) => (
-                      <th key={key}>{key}</th>
-                    ))}
-                  </tr>
-                </thead>
+            if (component.type === "table") {
+              const rows = component.props?.data || [];
 
-                <tbody>
-                  {rows.map((row, rowIndex) => (
-                    <tr key={row.id || rowIndex}>
-                      {Object.values(row).map((value, index) => (
-                        <td key={index}>
-                          {typeof value === "object"
-                            ? JSON.stringify(value)
-                            : String(value)}
-                        </td>
+              return (
+                <table
+                  key={component.id}
+                  className="runtime-component runtime-table"
+                  style={{
+                    left: layout.x ?? 40,
+                    top: layout.y ?? 40,
+                    width: layout.width ?? 420,
+                    height: layout.height ?? 180,
+                  }}
+                >
+                  <thead>
+                    <tr>
+                      {Object.keys(rows[0] || {}).map((key) => (
+                        <th key={key}>{key}</th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            );
-          }
+                  </thead>
 
-          return null;
-        })}
+                  <tbody>
+                    {rows.map((row, rowIndex) => (
+                      <tr key={row.id || rowIndex}>
+                        {Object.values(row).map((value, index) => (
+                          <td key={index}>
+                            {typeof value === "object"
+                              ? JSON.stringify(value)
+                              : String(value)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              );
+            }
+
+            return null;
+          })}
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
+
   if (session && selectedApp) {
     const schema = selectedApp.app_schema || { components: [], queries: [] };
 
@@ -1277,26 +1283,35 @@ if (publicApp) {
               </div>
             ) : (
               apps.map((app) => (
-               <div className="app-card" key={app.id}>
-  <button
-    className="app-card-open"
-    onClick={() => setSelectedApp(app)}
-  >
-    <h3>{app.name}</h3>
-    <p>/{app.slug}</p>
-    <span>{app.published ? "Published" : "Draft"}</span>
-  </button>
+                <div className="app-card" key={app.id}>
+                  <button
+                    type="button"
+                    className="app-card-open"
+                    onClick={() => setSelectedApp(app)}
+                  >
+                    <h3>{app.name}</h3>
+                    <p>/{app.slug}</p>
+                    <span>{app.published ? "Published" : "Draft"}</span>
+                  </button>
 
-  <button
-    className="delete-app-button"
-    onClick={(e) => {
-      e.stopPropagation();
-      deleteApp(app.id);
-    }}
-  >
-    Delete
-  </button>
-</div>
+                  <button
+                    type="button"
+                    className="delete-app-button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteApp(app.id);
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))
+            )}
+          </section>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="auth-page">
