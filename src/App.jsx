@@ -1013,9 +1013,10 @@ className={`preview-image clickable-image ${component.props?.fitMode || "respons
       </select>
     </label>
 
-    <label className="inspector-field">
-      On Click Script
-      <textarea
+<label className="inspector-field">
+  On Click Script
+  <textarea
+    className="script-editor"
         value={selectedComponent.events?.onClick || ""}
         onChange={(e) =>
           updateComponentEvents({ onClick: e.target.value })

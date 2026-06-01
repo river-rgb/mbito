@@ -403,8 +403,11 @@ button:disabled {
 }
 
 .inspector-field textarea {
-  min-height: 100px;
+  min-height: 220px;
   resize: vertical;
+  font-family: monospace;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .layout-grid {
@@ -534,4 +537,11 @@ button:disabled {
   height: 100%;
   display: block;
   pointer-events: none;
+}
+.script-editor {
+  min-height: 300px;
+  resize: vertical;
+  font-family: Consolas, Monaco, monospace;
+  font-size: 13px;
+  line-height: 1.6;
 }
