@@ -593,3 +593,12 @@ button:disabled {
   width: 100%;
   background: #dc2626;
 }
+.runtime-text,
+.preview-text {
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  text-align: left;
+  overflow: visible;
+}
