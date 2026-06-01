@@ -282,9 +282,12 @@ button:disabled {
 }
 
 .preview-text {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.6;
   overflow: auto;
+  white-space: pre-wrap;
+  text-align: left;
 }
 
 .preview-button {
@@ -515,9 +518,12 @@ button:disabled {
 }
 
 .runtime-text {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.6;
   overflow: auto;
+  white-space: pre-wrap;
+  text-align: left;
 }
 
 .runtime-image {
