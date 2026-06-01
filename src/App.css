@@ -524,3 +524,14 @@ button:disabled {
 .runtime-component {
   pointer-events: auto;
 }
+.runtime-image-clickbox {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.runtime-image-clickbox img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}

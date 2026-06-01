@@ -1063,20 +1063,29 @@ className={`preview-image clickable-image ${component.props?.fitMode || "respons
 
 if (component.type === "image") {
   return (
-    <img
+    <div
       key={component.id}
-      className={`runtime-component runtime-image ${component.props?.fitMode || "responsive"}`}
-      src={component.props?.src}
-      alt={component.props?.alt || ""}
+      className="runtime-component runtime-image-clickbox"
       style={{
         left: layout.x ?? 40,
         top: layout.y ?? 40,
         width: layout.width ?? 240,
         height: layout.height ?? 100,
         cursor: component.events?.onClick ? "pointer" : "default",
+        zIndex: 20,
       }}
-      onClick={() => runComponentScript(component, "onClick")}
-    />
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        runComponentScript(component, "onClick");
+      }}
+    >
+      <img
+        className={`runtime-image ${component.props?.fitMode || "responsive"}`}
+        src={component.props?.src}
+        alt={component.props?.alt || ""}
+      />
+    </div>
   );
 }
 
