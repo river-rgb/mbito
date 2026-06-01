@@ -65,6 +65,73 @@ function App() {
     setApps(data || []);
   }
 
+  function getPublishedUrl(app) {
+    return `https://${app.slug}.mbito.org`;
+  }
+
+  async function publishApp() {
+    if (!selectedApp) return;
+
+    const { error } = await supabase
+      .from("apps")
+      .update({
+        published: true,
+        published_at: new Date().toISOString(),
+        app_schema: selectedApp.app_schema,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", selectedApp.id);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    const updatedApp = {
+      ...selectedApp,
+      published: true,
+      published_at: new Date().toISOString(),
+    };
+
+    setSelectedApp(updatedApp);
+    setApps((current) =>
+      current.map((app) => (app.id === updatedApp.id ? updatedApp : app))
+    );
+
+    alert(`Published: ${getPublishedUrl(updatedApp)}`);
+  }
+
+  async function unpublishApp() {
+    if (!selectedApp) return;
+
+    const { error } = await supabase
+      .from("apps")
+      .update({
+        published: false,
+        published_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", selectedApp.id);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    const updatedApp = {
+      ...selectedApp,
+      published: false,
+      published_at: null,
+    };
+
+    setSelectedApp(updatedApp);
+    setApps((current) =>
+      current.map((app) => (app.id === updatedApp.id ? updatedApp : app))
+    );
+
+    alert("App unpublished");
+  }
+
   async function createApp(e) {
     e.preventDefault();
     if (!appName.trim()) return;
@@ -112,9 +179,30 @@ function App() {
     }));
   }
 
+  async function saveApp() {
+    setSaving(true);
+
+    const { error } = await supabase
+      .from("apps")
+      .update({
+        app_schema: selectedApp.app_schema,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", selectedApp.id);
+
+    setSaving(false);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    alert("App saved");
+    fetchApps();
+  }
+
   function addQuery() {
     const schema = selectedApp.app_schema || { components: [], queries: [] };
-
     const id = `query${Date.now()}`;
 
     const newQuery = {
@@ -139,26 +227,20 @@ function App() {
   function updateQuery(queryId, updates) {
     const schema = selectedApp.app_schema || { components: [], queries: [] };
 
-    const newQueries = (schema.queries || []).map((query) =>
-      query.id === queryId ? { ...query, ...updates } : query
-    );
-
     updateSelectedSchema({
       ...schema,
-      queries: newQueries,
+      queries: (schema.queries || []).map((query) =>
+        query.id === queryId ? { ...query, ...updates } : query
+      ),
     });
   }
 
   function deleteQuery(queryId) {
     const schema = selectedApp.app_schema || { components: [], queries: [] };
 
-    const newQueries = (schema.queries || []).filter(
-      (query) => query.id !== queryId
-    );
-
     updateSelectedSchema({
       ...schema,
-      queries: newQueries,
+      queries: (schema.queries || []).filter((query) => query.id !== queryId),
     });
 
     setSelectedQueryId(null);
@@ -166,11 +248,6 @@ function App() {
 
   async function runQuery(query) {
     try {
-      if (!query.url) {
-        alert("Query URL is required");
-        return;
-      }
-
       const options = {
         method: query.method || "GET",
         headers: query.headers || {},
@@ -183,13 +260,10 @@ function App() {
       const response = await fetch(query.url, options);
       const contentType = response.headers.get("content-type");
 
-      let data;
-
-      if (contentType && contentType.includes("application/json")) {
-        data = await response.json();
-      } else {
-        data = await response.text();
-      }
+      const data =
+        contentType && contentType.includes("application/json")
+          ? await response.json()
+          : await response.text();
 
       const result = {
         ok: response.ok,
@@ -222,11 +296,7 @@ function App() {
   }
 
   function addComponent(type) {
-    const schema = selectedApp.app_schema || {
-      components: [],
-      queries: [],
-    };
-
+    const schema = selectedApp.app_schema || { components: [], queries: [] };
     const id = `${type}${Date.now()}`;
     const baseLayout = { x: 60, y: 60, width: 260, height: 100 };
 
@@ -292,12 +362,11 @@ function App() {
       };
     }
 
-    const newSchema = {
+    updateSelectedSchema({
       ...schema,
       components: [...(schema.components || []), newComponent],
-    };
+    });
 
-    updateSelectedSchema(newSchema);
     setSelectedComponentId(id);
     setSelectedQueryId(null);
   }
@@ -305,42 +374,26 @@ function App() {
   function updateComponentProps(newProps) {
     const schema = selectedApp.app_schema;
 
-    const newComponents = schema.components.map((component) => {
-      if (component.id !== selectedComponentId) return component;
-
-      return {
-        ...component,
-        props: {
-          ...component.props,
-          ...newProps,
-        },
-      };
-    });
-
     updateSelectedSchema({
       ...schema,
-      components: newComponents,
+      components: schema.components.map((component) =>
+        component.id === selectedComponentId
+          ? { ...component, props: { ...component.props, ...newProps } }
+          : component
+      ),
     });
   }
 
   function updateComponentEvents(newEvents) {
     const schema = selectedApp.app_schema;
 
-    const newComponents = schema.components.map((component) => {
-      if (component.id !== selectedComponentId) return component;
-
-      return {
-        ...component,
-        events: {
-          ...(component.events || {}),
-          ...newEvents,
-        },
-      };
-    });
-
     updateSelectedSchema({
       ...schema,
-      components: newComponents,
+      components: schema.components.map((component) =>
+        component.id === selectedComponentId
+          ? { ...component, events: { ...(component.events || {}), ...newEvents } }
+          : component
+      ),
     });
   }
 
@@ -348,23 +401,18 @@ function App() {
     setSelectedApp((currentApp) => {
       const schema = currentApp.app_schema || { components: [], queries: [] };
 
-      const newComponents = schema.components.map((component) => {
-        if (component.id !== componentId) return component;
-
-        return {
-          ...component,
-          layout: {
-            ...(component.layout || {}),
-            ...newLayout,
-          },
-        };
-      });
-
       return {
         ...currentApp,
         app_schema: {
           ...schema,
-          components: newComponents,
+          components: schema.components.map((component) =>
+            component.id === componentId
+              ? {
+                  ...component,
+                  layout: { ...(component.layout || {}), ...newLayout },
+                }
+              : component
+          ),
         },
       };
     });
@@ -373,68 +421,38 @@ function App() {
   function deleteSelectedComponent() {
     const schema = selectedApp.app_schema;
 
-    const newComponents = schema.components.filter(
-      (component) => component.id !== selectedComponentId
-    );
-
     updateSelectedSchema({
       ...schema,
-      components: newComponents,
+      components: schema.components.filter(
+        (component) => component.id !== selectedComponentId
+      ),
     });
 
     setSelectedComponentId(null);
   }
 
-  async function saveApp() {
-    setSaving(true);
-
-    const { error } = await supabase
-      .from("apps")
-      .update({
-        app_schema: selectedApp.app_schema,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", selectedApp.id);
-
-    setSaving(false);
-
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    alert("App saved");
-    fetchApps();
-  }
-
   async function runComponentScript(component, eventName) {
     const script = component.events?.[eventName];
-
     if (!script || !script.trim()) return;
 
     const schema = selectedApp.app_schema || { components: [], queries: [] };
+    const queryApi = {};
 
-const queryApi = {};
+    for (const query of schema.queries || []) {
+      const apiObject = {
+        data: queryResults[query.id]?.data,
+        result: queryResults[query.id],
+        run: () => runQuery(query),
+      };
 
-for (const query of schema.queries || []) {
-  const apiObject = {
-    data: queryResults[query.id]?.data,
-    result: queryResults[query.id],
-    run: () => runQuery(query),
-  };
+      queryApi[query.id] = apiObject;
 
-  // access by id
-  queryApi[query.id] = apiObject;
+      const safeName = (query.name || "")
+        .trim()
+        .replace(/[^a-zA-Z0-9_]/g, "_");
 
-  // access by name
-  const safeName = (query.name || "")
-    .trim()
-    .replace(/[^a-zA-Z0-9_]/g, "_");
-
-  if (safeName) {
-    queryApi[safeName] = apiObject;
-  }
-}
+      if (safeName) queryApi[safeName] = apiObject;
+    }
 
     const url = {
       href: window.location.href,
@@ -449,20 +467,12 @@ for (const query of schema.queries || []) {
 
     const utils = {
       openUrl(targetUrl, options = {}) {
-        const newTab = options.newTab ?? false;
-        const forceReload = options.forceReload ?? false;
-
-        if (newTab) {
+        if (options.newTab) {
           window.open(targetUrl, "_blank");
           return;
         }
 
-        if (forceReload) {
-          window.location.href = targetUrl;
-          return;
-        }
-
-        window.location.assign(targetUrl);
+        window.location.href = targetUrl;
       },
     };
 
@@ -598,8 +608,7 @@ for (const query of schema.queries || []) {
   function getTableRows(component) {
     if (component.props?.dataSource === "query" && component.props?.queryId) {
       const result = queryResults[component.props.queryId];
-      if (Array.isArray(result?.data)) return result.data;
-      return [];
+      return Array.isArray(result?.data) ? result.data : [];
     }
 
     return component.props?.data || [];
@@ -644,7 +653,6 @@ for (const query of schema.queries || []) {
               ))}
             </tr>
           </thead>
-
           <tbody>
             {rows.map((row, rowIndex) => (
               <tr key={row.id || rowIndex}>
@@ -672,7 +680,6 @@ for (const query of schema.queries || []) {
               <input type="text" placeholder={field} />
             </label>
           ))}
-
           <button type="button">Submit</button>
         </form>
       );
@@ -701,69 +708,76 @@ for (const query of schema.queries || []) {
     );
   }
 
-  function renderQueryInspector(schema) {
-    const query = (schema.queries || []).find((q) => q.id === selectedQueryId);
-    if (!query) return null;
+  function renderInspector(schema) {
+    if (selectedQueryId) {
+      const query = (schema.queries || []).find((q) => q.id === selectedQueryId);
+      const result = queryResults[query?.id];
 
-    const result = queryResults[query.id];
+      if (!query) return null;
 
-    return (
-      <>
-        <h3>Query</h3>
+      return (
+        <>
+          <h3>Query</h3>
 
-        <label className="inspector-field">
-          Name
-          <input
-            value={query.name || ""}
-            onChange={(e) => updateQuery(query.id, { name: e.target.value })}
-          />
-        </label>
-
-        <label className="inspector-field">
-          Method
-          <select
-            value={query.method || "GET"}
-            onChange={(e) => updateQuery(query.id, { method: e.target.value })}
-          >
-            <option>GET</option>
-            <option>POST</option>
-            <option>PUT</option>
-            <option>PATCH</option>
-            <option>DELETE</option>
-          </select>
-        </label>
-
-        <label className="inspector-field">
-          URL
-          <input
-            value={query.url || ""}
-            onChange={(e) => updateQuery(query.id, { url: e.target.value })}
-          />
-        </label>
-
-        {query.method !== "GET" && (
           <label className="inspector-field">
-            Body
-            <textarea
-              value={query.body || ""}
-              onChange={(e) => updateQuery(query.id, { body: e.target.value })}
+            Name
+            <input
+              value={query.name || ""}
+              onChange={(e) => updateQuery(query.id, { name: e.target.value })}
             />
           </label>
-        )}
 
-        <button onClick={() => runQuery(query)}>Run Query</button>
+          <label className="inspector-field">
+            Method
+            <select
+              value={query.method || "GET"}
+              onChange={(e) =>
+                updateQuery(query.id, { method: e.target.value })
+              }
+            >
+              <option>GET</option>
+              <option>POST</option>
+              <option>PUT</option>
+              <option>PATCH</option>
+              <option>DELETE</option>
+            </select>
+          </label>
 
-        <button className="danger-button" onClick={() => deleteQuery(query.id)}>
-          Delete Query
-        </button>
+          <label className="inspector-field">
+            URL
+            <input
+              value={query.url || ""}
+              onChange={(e) => updateQuery(query.id, { url: e.target.value })}
+            />
+          </label>
 
-        <h4>Result</h4>
-        <pre>{result ? JSON.stringify(result, null, 2) : "No result yet"}</pre>
-      </>
-    );
-  }
+          {query.method !== "GET" && (
+            <label className="inspector-field">
+              Body
+              <textarea
+                value={query.body || ""}
+                onChange={(e) =>
+                  updateQuery(query.id, { body: e.target.value })
+                }
+              />
+            </label>
+          )}
 
-  function renderComponentInspector(schema) {
+          <button onClick={() => runQuery(query)}>Run Query</button>
+
+          <button
+            className="danger-button"
+            onClick={() => deleteQuery(query.id)}
+          >
+            Delete Query
+          </button>
+
+          <h4>Result</h4>
+          <pre>{result ? JSON.stringify(result, null, 2) : "No result yet"}</pre>
+        </>
+      );
+    }
+
     const selectedComponent = schema.components?.find(
       (component) => component.id === selectedComponentId
     );
@@ -832,7 +846,6 @@ for (const query of schema.queries || []) {
                 onChange={(e) =>
                   updateComponentEvents({ onClick: e.target.value })
                 }
-                placeholder='const result = await queries.query1.run();'
               />
             </label>
           </>
@@ -916,17 +929,8 @@ for (const query of schema.queries || []) {
                 onChange={(e) =>
                   updateComponentEvents({ onClick: e.target.value })
                 }
-                placeholder='const result = await queries.query1.run();'
               />
             </label>
-
-            <div className="script-help">
-              Available:
-              <code>queries.queryId.run()</code>
-              <code>props</code>
-              <code>url</code>
-              <code>utils.openUrl()</code>
-            </div>
           </>
         )}
 
@@ -935,11 +939,6 @@ for (const query of schema.queries || []) {
         </button>
       </>
     );
-  }
-
-  function renderInspector(schema) {
-    if (selectedQueryId) return renderQueryInspector(schema);
-    return renderComponentInspector(schema);
   }
 
   if (session && selectedApp) {
@@ -952,8 +951,19 @@ for (const query of schema.queries || []) {
 
           <div>
             <h2>{selectedApp.name}</h2>
-            <p>Builder</p>
+            <p>{selectedApp.published ? "Published" : "Draft"}</p>
           </div>
+
+          {selectedApp.published && (
+            <a
+              href={getPublishedUrl(selectedApp)}
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: "white" }}
+            >
+              Open live app
+            </a>
+          )}
 
           <div className="builder-section">
             <h4>Components</h4>
@@ -986,12 +996,20 @@ for (const query of schema.queries || []) {
           <header className="builder-header">
             <div>
               <h1>{selectedApp.name}</h1>
-              <p>Drag, resize, script, and run REST queries</p>
+              <p>Drag, resize, script, query, and publish apps</p>
             </div>
 
-            <button onClick={saveApp} disabled={saving}>
-              {saving ? "Saving..." : "Save"}
-            </button>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button onClick={saveApp} disabled={saving}>
+                {saving ? "Saving..." : "Save"}
+              </button>
+
+              {selectedApp.published ? (
+                <button onClick={unpublishApp}>Unpublish</button>
+              ) : (
+                <button onClick={publishApp}>Publish</button>
+              )}
+            </div>
           </header>
 
           <section className="builder-canvas">
