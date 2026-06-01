@@ -1,17 +1,17 @@
 {
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/:path*",
       "has": [
         {
           "type": "host",
-          "value": "(?<subdomain>.+).mbito.org"
+          "value": "^(?!www\\.)(?<subdomain>.+)\\.mbito\\.org$"
         }
       ],
       "destination": "/public-runtime.html"
     },
     {
-      "source": "/(.*)",
+      "source": "/:path*",
       "destination": "/index.html"
     }
   ]
