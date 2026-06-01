@@ -137,10 +137,10 @@ function App() {
     return `https://${app.slug}.mbito.org`;
   }
 function getCanvasWidth() {
-  if (canvasMode === "desktop") return 900;
+  if (canvasMode === "desktop") return 960;
   if (canvasMode === "tablet") return 768;
   if (canvasMode === "mobile") return 390;
-  return 900;
+  return 960;
 }
   async function publishApp() {
     if (!selectedApp) return;
@@ -1238,7 +1238,7 @@ return (
           </header>
 
           <section className="builder-canvas">
-            <div
+<div
   className="preview-panel"
   style={{ width: getCanvasWidth() }}
               onClick={() => {

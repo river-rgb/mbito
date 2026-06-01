@@ -1,3 +1,10 @@
+html,
+body,
+#root {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
 body {
   margin: 0;
   font-family: Arial, sans-serif;
@@ -169,10 +176,10 @@ button:disabled {
 }
 
 .builder-page {
+  width: 100vw;
   height: 100vh;
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr) 320px;
-  background: #f6f7fb;
+  grid-template-columns: 220px minmax(0, 1fr) 340px;
   overflow: hidden;
 }
 
@@ -229,26 +236,30 @@ button:disabled {
   overflow: auto;
   background: #e5e7eb;
   border-radius: 18px;
-  padding: 20px;
+  padding: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
 }
 
 .preview-panel {
-  width: 900px;
-  min-height: 2400px;
+  min-height: 1800px;
   background: white;
   border-radius: 14px;
-  padding: 24px;
+  padding: 32px;
   position: relative;
-  margin: 0 auto;
+  box-sizing: border-box;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
 }
 
 .builder-inspector {
-  width: 260px;
+  width: auto;
   min-width: 0;
   background: white;
   border-left: 1px solid #e5e7eb;
   padding: 16px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .builder-inspector h3 {
@@ -478,4 +489,10 @@ button:disabled {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.builder-inspector input,
+.builder-inspector textarea,
+.builder-inspector select {
+  width: 100%;
+  box-sizing: border-box;
 }
