@@ -5,16 +5,77 @@
     <meta name="referrer" content="origin" />
     <meta name="theme-color" content="#ffffff" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mbito App</title>
-  </head>
 
-  <body>
-    <div id="root" style="height: 100%"></div>
+    <title>Mbito App</title>
 
     <script>
       window.MBITO_RUNTIME = true;
+      window.MBITO_RUNTIME_MODE = "published";
+      window.MBITO_VERSION = "0.1.0";
+      window.MBITO_APP_DOMAIN = "mbito.org";
       window.htmlLoadedAt = performance.now();
+
+      window.MBITO_PAGE_SUSPEND_DETECTED =
+        document.visibilityState === "hidden";
+
+      function _mbitoDetectVisibilityChange() {
+        if (document.visibilityState === "hidden") {
+          window.MBITO_PAGE_SUSPEND_DETECTED = true;
+          document.removeEventListener(
+            "visibilitychange",
+            _mbitoDetectVisibilityChange
+          );
+        }
+      }
+
+      if (document.visibilityState === "visible") {
+        document.addEventListener(
+          "visibilitychange",
+          _mbitoDetectVisibilityChange
+        );
+      }
     </script>
+  </head>
+
+  <body>
+    <script>
+      window.MBITO_ENTRYPOINT_RETRY_KEY = "mbito-runtime-entrypoint-retry-count";
+
+      function mbitoRuntimeErrorHandler() {
+        var retryCount = 0;
+        var storedRetryCount = localStorage.getItem(
+          window.MBITO_ENTRYPOINT_RETRY_KEY
+        );
+
+        if (storedRetryCount !== null) {
+          retryCount = parseInt(storedRetryCount);
+        }
+
+        if (retryCount < 5) {
+          localStorage.setItem(
+            window.MBITO_ENTRYPOINT_RETRY_KEY,
+            retryCount + 1
+          );
+
+          window.location.reload();
+        }
+      }
+    </script>
+
+    <div id="root" style="height: 100%"></div>
+
+    <div
+      id="translationToolDetectionId"
+      style="
+        position: absolute;
+        left: -9999px;
+        top: -9999px;
+        visibility: hidden;
+        z-index: -100;
+      "
+    >
+      This is invisible text to detect translation tools.
+    </div>
 
     <script type="module" src="/src/publicRuntimeEntry.jsx"></script>
   </body>
