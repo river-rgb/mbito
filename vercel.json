@@ -1,0 +1,18 @@
+{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "(?<subdomain>.+).mbito.org"
+        }
+      ],
+      "destination": "/public-runtime.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
