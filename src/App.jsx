@@ -74,6 +74,27 @@ useEffect(() => {
     setLoading(false);
     if (error) alert(error.message);
   }
+  async function deleteApp(appId) {
+  const confirmed = confirm("Delete this app permanently?");
+
+  if (!confirmed) return;
+
+  const { error } = await supabase
+    .from("apps")
+    .delete()
+    .eq("id", appId);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  setApps((current) => current.filter((app) => app.id !== appId));
+
+  if (selectedApp?.id === appId) {
+    setSelectedApp(null);
+  }
+}
 function getSubdomainSlug() {
   const host = window.location.hostname;
 
