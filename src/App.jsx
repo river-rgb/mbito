@@ -6,9 +6,12 @@ function App() {
   const [session, setSession] = useState(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [apps, setApps] = useState([]);
   const [appName, setAppName] = useState("");
+  const [selectedApp, setSelectedApp] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -25,9 +28,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (session) {
-      fetchApps();
-    }
+    if (session) fetchApps();
   }, [session]);
 
   async function handleLogin(e) {
@@ -40,7 +41,6 @@ function App() {
     });
 
     setLoading(false);
-
     if (error) alert(error.message);
   }
 
@@ -64,7 +64,6 @@ function App() {
 
   async function createApp(e) {
     e.preventDefault();
-
     if (!appName.trim()) return;
 
     const slug = appName
@@ -101,6 +100,215 @@ function App() {
 
     setAppName("");
     fetchApps();
+  }
+
+  function updateSelectedSchema(newSchema) {
+    setSelectedApp({
+      ...selectedApp,
+      app_schema: newSchema,
+    });
+  }
+
+  function addComponent(type) {
+    const schema = selectedApp.app_schema || {
+      components: [],
+      queries: [],
+    };
+
+    const id = `${type}${Date.now()}`;
+
+    let newComponent;
+
+    if (type === "text") {
+      newComponent = {
+        id,
+        type: "text",
+        props: {
+          text: "New text block",
+        },
+      };
+    }
+
+    if (type === "button") {
+      newComponent = {
+        id,
+        type: "button",
+        props: {
+          label: "Click me",
+        },
+      };
+    }
+
+    if (type === "table") {
+      newComponent = {
+        id,
+        type: "table",
+        props: {
+          data: [
+            { id: 1, name: "Alice", role: "Admin" },
+            { id: 2, name: "Bob", role: "Editor" },
+          ],
+        },
+      };
+    }
+
+    if (type === "form") {
+      newComponent = {
+        id,
+        type: "form",
+        props: {
+          fields: ["Name", "Email"],
+        },
+      };
+    }
+
+    const newSchema = {
+      ...schema,
+      components: [...(schema.components || []), newComponent],
+    };
+
+    updateSelectedSchema(newSchema);
+  }
+
+  async function saveApp() {
+    setSaving(true);
+
+    const { error } = await supabase
+      .from("apps")
+      .update({
+        app_schema: selectedApp.app_schema,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", selectedApp.id);
+
+    setSaving(false);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    alert("App saved");
+    fetchApps();
+  }
+
+  function renderComponent(component) {
+    if (component.type === "text") {
+      return (
+        <div className="preview-text" key={component.id}>
+          {component.props?.text}
+        </div>
+      );
+    }
+
+    if (component.type === "button") {
+      return (
+        <button className="preview-button" key={component.id}>
+          {component.props?.label}
+        </button>
+      );
+    }
+
+    if (component.type === "table") {
+      const rows = component.props?.data || [];
+
+      return (
+        <table className="preview-table" key={component.id}>
+          <thead>
+            <tr>
+              {Object.keys(rows[0] || {}).map((key) => (
+                <th key={key}>{key}</th>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.id}>
+                {Object.values(row).map((value, index) => (
+                  <td key={index}>{value}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+
+    if (component.type === "form") {
+      return (
+        <form className="preview-form" key={component.id}>
+          {component.props?.fields?.map((field) => (
+            <label key={field}>
+              {field}
+              <input type="text" placeholder={field} />
+            </label>
+          ))}
+
+          <button type="button">Submit</button>
+        </form>
+      );
+    }
+
+    return (
+      <div className="preview-unknown" key={component.id}>
+        Unknown component: {component.type}
+      </div>
+    );
+  }
+
+  if (session && selectedApp) {
+    const schema = selectedApp.app_schema || { components: [], queries: [] };
+
+    return (
+      <div className="builder-page">
+        <aside className="builder-sidebar">
+          <button onClick={() => setSelectedApp(null)}>← Back</button>
+
+          <div>
+            <h2>{selectedApp.name}</h2>
+            <p>Builder</p>
+          </div>
+
+          <div className="builder-section">
+            <h4>Components</h4>
+            <button onClick={() => addComponent("text")}>Text</button>
+            <button onClick={() => addComponent("button")}>Button</button>
+            <button onClick={() => addComponent("table")}>Table</button>
+            <button onClick={() => addComponent("form")}>Form</button>
+          </div>
+        </aside>
+
+        <main className="builder-main">
+          <header className="builder-header">
+            <div>
+              <h1>{selectedApp.name}</h1>
+              <p>Draft app schema renderer</p>
+            </div>
+
+            <button onClick={saveApp} disabled={saving}>
+              {saving ? "Saving..." : "Save"}
+            </button>
+          </header>
+
+          <section className="builder-canvas">
+            <div className="preview-panel">
+              {schema.components?.length ? (
+                schema.components.map(renderComponent)
+              ) : (
+                <div className="empty-preview">No components yet.</div>
+              )}
+            </div>
+          </section>
+        </main>
+
+        <aside className="builder-inspector">
+          <h3>Inspector</h3>
+          <p>Current app schema.</p>
+          <pre>{JSON.stringify(schema, null, 2)}</pre>
+        </aside>
+      </div>
+    );
   }
 
   if (session) {
@@ -146,11 +354,15 @@ function App() {
               </div>
             ) : (
               apps.map((app) => (
-                <div className="app-card" key={app.id}>
+                <button
+                  className="app-card app-card-button"
+                  key={app.id}
+                  onClick={() => setSelectedApp(app)}
+                >
                   <h3>{app.name}</h3>
                   <p>/{app.slug}</p>
                   <span>{app.published ? "Published" : "Draft"}</span>
-                </div>
+                </button>
               ))
             )}
           </section>
