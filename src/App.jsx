@@ -12,12 +12,13 @@ function App() {
   const [appName, setAppName] = useState("");
   const [selectedApp, setSelectedApp] = useState(null);
   const [selectedComponentId, setSelectedComponentId] = useState(null);
+  const [canvasMode, setCanvasMode] = useState("desktop");
   const [selectedQueryId, setSelectedQueryId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [queryResults, setQueryResults] = useState({});
   const [publicApp, setPublicApp] = useState(null);
   const [publicLoading, setPublicLoading] = useState(true);
-
+  
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
@@ -135,7 +136,12 @@ function App() {
   function getPublishedUrl(app) {
     return `https://${app.slug}.mbito.org`;
   }
-
+function getCanvasWidth() {
+  if (canvasMode === "desktop") return 900;
+  if (canvasMode === "tablet") return 768;
+  if (canvasMode === "mobile") return 390;
+  return 900;
+}
   async function publishApp() {
     if (!selectedApp) return;
 
@@ -385,7 +391,7 @@ function App() {
         type: "button",
         layout: { ...baseLayout, width: 180, height: 70 },
         props: { label: "Click me" },
-        events: { onClick: `alert("Button clicked");` },
+events: {},
       };
     }
 
@@ -425,7 +431,7 @@ function App() {
           src: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee",
           alt: "Image",
         },
-        events: { onClick: `alert("Image clicked");` },
+events: {},
       };
     }
 
@@ -644,35 +650,36 @@ function App() {
       window.addEventListener("mouseup", onUp);
     }
 
-    return (
-      <div
-        className={
-          selectedComponentId === component.id
-            ? "component-shell selected"
-            : "component-shell"
-        }
-        style={{
-          position: "absolute",
-          left: layout.x ?? 40,
-          top: layout.y ?? 40,
-          width: layout.width ?? 240,
-          height: layout.height ?? 100,
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          setSelectedComponentId(component.id);
-          setSelectedQueryId(null);
-        }}
-      >
-<div className="component-content" onMouseDown={startDrag}>
-  {content}
-</div>
+return (
+  <div
+    className={
+      selectedComponentId === component.id
+        ? "component-shell selected"
+        : "component-shell"
+    }
+    style={{
+      position: "absolute",
+      left: layout.x ?? 40,
+      top: layout.y ?? 40,
+      width: layout.width ?? 240,
+      height: layout.height ?? 100,
+    }}
+    onClick={(e) => {
+      e.stopPropagation();
+      setSelectedComponentId(component.id);
+      setSelectedQueryId(null);
+    }}
+  >
+    <div className="component-content" onMouseDown={startDrag}>
+      {content}
+    </div>
 
-        <div className="component-content">{content}</div>
-
-        <div className="resize-handle" onMouseDown={startResize} />
-      </div>
-    );
+    <div
+      className="resize-handle"
+      onMouseDown={startResize}
+    />
+  </div>
+);
   }
 
   function getTableRows(component) {
@@ -1203,22 +1210,37 @@ function App() {
               <p>Drag, resize, script, query, and publish apps</p>
             </div>
 
-            <div style={{ display: "flex", gap: "10px" }}>
-              <button onClick={saveApp} disabled={saving}>
-                {saving ? "Saving..." : "Save"}
-              </button>
+<div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+  <select
+    value={canvasMode}
+    onChange={(e) => setCanvasMode(e.target.value)}
+    style={{
+      padding: "10px",
+      borderRadius: "8px",
+      border: "1px solid #d1d5db",
+    }}
+  >
+    <option value="desktop">Desktop</option>
+    <option value="tablet">Tablet</option>
+    <option value="mobile">Mobile</option>
+  </select>
 
-              {selectedApp.published ? (
-                <button onClick={unpublishApp}>Unpublish</button>
-              ) : (
-                <button onClick={publishApp}>Publish</button>
-              )}
-            </div>
+  <button onClick={saveApp} disabled={saving}>
+    {saving ? "Saving..." : "Save"}
+  </button>
+
+  {selectedApp.published ? (
+    <button onClick={unpublishApp}>Unpublish</button>
+  ) : (
+    <button onClick={publishApp}>Publish</button>
+  )}
+</div>
           </header>
 
           <section className="builder-canvas">
             <div
-              className="preview-panel"
+  className="preview-panel"
+  style={{ width: getCanvasWidth() }}
               onClick={() => {
                 setSelectedComponentId(null);
                 setSelectedQueryId(null);
