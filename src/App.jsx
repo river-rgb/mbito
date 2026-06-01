@@ -12,7 +12,9 @@ function App() {
   const [appName, setAppName] = useState("");
   const [selectedApp, setSelectedApp] = useState(null);
   const [selectedComponentId, setSelectedComponentId] = useState(null);
+  const [selectedQueryId, setSelectedQueryId] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [queryResults, setQueryResults] = useState({});
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -79,9 +81,7 @@ function App() {
           id: "text1",
           type: "text",
           layout: { x: 40, y: 40, width: 360, height: 90 },
-          props: {
-            text: "Welcome to your first Mbito app",
-          },
+          props: { text: "Welcome to your first Mbito app" },
           events: {},
         },
       ],
@@ -112,6 +112,115 @@ function App() {
     }));
   }
 
+  function addQuery() {
+    const schema = selectedApp.app_schema || { components: [], queries: [] };
+
+    const id = `query${Date.now()}`;
+
+    const newQuery = {
+      id,
+      name: "New REST Query",
+      type: "rest",
+      method: "GET",
+      url: "https://jsonplaceholder.typicode.com/users",
+      headers: {},
+      body: "",
+    };
+
+    updateSelectedSchema({
+      ...schema,
+      queries: [...(schema.queries || []), newQuery],
+    });
+
+    setSelectedQueryId(id);
+    setSelectedComponentId(null);
+  }
+
+  function updateQuery(queryId, updates) {
+    const schema = selectedApp.app_schema || { components: [], queries: [] };
+
+    const newQueries = (schema.queries || []).map((query) =>
+      query.id === queryId ? { ...query, ...updates } : query
+    );
+
+    updateSelectedSchema({
+      ...schema,
+      queries: newQueries,
+    });
+  }
+
+  function deleteQuery(queryId) {
+    const schema = selectedApp.app_schema || { components: [], queries: [] };
+
+    const newQueries = (schema.queries || []).filter(
+      (query) => query.id !== queryId
+    );
+
+    updateSelectedSchema({
+      ...schema,
+      queries: newQueries,
+    });
+
+    setSelectedQueryId(null);
+  }
+
+  async function runQuery(query) {
+    try {
+      if (!query.url) {
+        alert("Query URL is required");
+        return;
+      }
+
+      const options = {
+        method: query.method || "GET",
+        headers: query.headers || {},
+      };
+
+      if (query.method !== "GET" && query.body) {
+        options.body = query.body;
+      }
+
+      const response = await fetch(query.url, options);
+      const contentType = response.headers.get("content-type");
+
+      let data;
+
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        data = await response.text();
+      }
+
+      const result = {
+        ok: response.ok,
+        status: response.status,
+        data,
+        ranAt: new Date().toISOString(),
+      };
+
+      setQueryResults((current) => ({
+        ...current,
+        [query.id]: result,
+      }));
+
+      return result;
+    } catch (error) {
+      const result = {
+        ok: false,
+        error: error.message,
+        ranAt: new Date().toISOString(),
+      };
+
+      setQueryResults((current) => ({
+        ...current,
+        [query.id]: result,
+      }));
+
+      alert(`Query error: ${error.message}`);
+      return result;
+    }
+  }
+
   function addComponent(type) {
     const schema = selectedApp.app_schema || {
       components: [],
@@ -139,9 +248,7 @@ function App() {
         type: "button",
         layout: { ...baseLayout, width: 180, height: 70 },
         props: { label: "Click me" },
-        events: {
-          onClick: `alert("Button clicked");`,
-        },
+        events: { onClick: `alert("Button clicked");` },
       };
     }
 
@@ -151,6 +258,8 @@ function App() {
         type: "table",
         layout: { ...baseLayout, width: 420, height: 180 },
         props: {
+          dataSource: "static",
+          queryId: "",
           data: [
             { id: 1, name: "Alice", role: "Admin" },
             { id: 2, name: "Bob", role: "Editor" },
@@ -165,9 +274,7 @@ function App() {
         id,
         type: "form",
         layout: { ...baseLayout, width: 320, height: 260 },
-        props: {
-          fields: ["Name", "Email"],
-        },
+        props: { fields: ["Name", "Email"] },
         events: {},
       };
     }
@@ -181,9 +288,7 @@ function App() {
           src: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee",
           alt: "Image",
         },
-        events: {
-          onClick: `alert("Image clicked");`,
-        },
+        events: { onClick: `alert("Image clicked");` },
       };
     }
 
@@ -194,6 +299,7 @@ function App() {
 
     updateSelectedSchema(newSchema);
     setSelectedComponentId(id);
+    setSelectedQueryId(null);
   }
 
   function updateComponentProps(newProps) {
@@ -240,10 +346,7 @@ function App() {
 
   function updateComponentLayout(componentId, newLayout) {
     setSelectedApp((currentApp) => {
-      const schema = currentApp.app_schema || {
-        components: [],
-        queries: [],
-      };
+      const schema = currentApp.app_schema || { components: [], queries: [] };
 
       const newComponents = schema.components.map((component) => {
         if (component.id !== componentId) return component;
@@ -304,68 +407,85 @@ function App() {
     fetchApps();
   }
 
-function runComponentScript(component, eventName) {
-  const script = component.events?.[eventName];
+  async function runComponentScript(component, eventName) {
+    const script = component.events?.[eventName];
 
-  if (!script || !script.trim()) return;
+    if (!script || !script.trim()) return;
 
-  const url = {
-    href: window.location.href,
-    origin: window.location.origin,
-    pathname: window.location.pathname,
-    search: window.location.search,
-    hash: window.location.hash,
-    searchParams: Object.fromEntries(
-      new URLSearchParams(window.location.search).entries()
-    ),
-  };
+    const schema = selectedApp.app_schema || { components: [], queries: [] };
 
-  const utils = {
-    openUrl(targetUrl, options = {}) {
-      const newTab = options.newTab ?? false;
-      const forceReload = options.forceReload ?? false;
+    const queryApi = {};
+    for (const query of schema.queries || []) {
+      queryApi[query.id] = {
+        data: queryResults[query.id]?.data,
+        result: queryResults[query.id],
+        run: () => runQuery(query),
+      };
+    }
 
-      if (newTab) {
-        window.open(targetUrl, "_blank");
-        return;
-      }
+    const url = {
+      href: window.location.href,
+      origin: window.location.origin,
+      pathname: window.location.pathname,
+      search: window.location.search,
+      hash: window.location.hash,
+      searchParams: Object.fromEntries(
+        new URLSearchParams(window.location.search).entries()
+      ),
+    };
 
-      if (forceReload) {
-        window.location.href = targetUrl;
-        return;
-      }
+    const utils = {
+      openUrl(targetUrl, options = {}) {
+        const newTab = options.newTab ?? false;
+        const forceReload = options.forceReload ?? false;
 
-      window.location.assign(targetUrl);
-    },
-  };
+        if (newTab) {
+          window.open(targetUrl, "_blank");
+          return;
+        }
 
-  try {
-    const runner = new Function(
-      "component",
-      "props",
-      "layout",
-      "app",
-      "url",
-      "utils",
-      "alert",
-      "console",
-      script
-    );
+        if (forceReload) {
+          window.location.href = targetUrl;
+          return;
+        }
 
-    runner(
-      component,
-      component.props || {},
-      component.layout || {},
-      selectedApp,
-      url,
-      utils,
-      alert,
-      console
-    );
-  } catch (error) {
-    alert(`Script error: ${error.message}`);
+        window.location.assign(targetUrl);
+      },
+    };
+
+    try {
+      const runner = new Function(
+        "component",
+        "props",
+        "layout",
+        "app",
+        "url",
+        "utils",
+        "queries",
+        "alert",
+        "console",
+        `
+        return (async () => {
+          ${script}
+        })();
+        `
+      );
+
+      await runner(
+        component,
+        component.props || {},
+        component.layout || {},
+        selectedApp,
+        url,
+        utils,
+        queryApi,
+        alert,
+        console
+      );
+    } catch (error) {
+      alert(`Script error: ${error.message}`);
+    }
   }
-}
 
   function componentWrapper(component, content) {
     const layout = component.layout || {
@@ -380,6 +500,7 @@ function runComponentScript(component, eventName) {
       e.stopPropagation();
 
       setSelectedComponentId(component.id);
+      setSelectedQueryId(null);
 
       const startX = e.clientX;
       const startY = e.clientY;
@@ -407,6 +528,7 @@ function runComponentScript(component, eventName) {
       e.stopPropagation();
 
       setSelectedComponentId(component.id);
+      setSelectedQueryId(null);
 
       const startX = e.clientX;
       const startY = e.clientY;
@@ -446,6 +568,7 @@ function runComponentScript(component, eventName) {
         onClick={(e) => {
           e.stopPropagation();
           setSelectedComponentId(component.id);
+          setSelectedQueryId(null);
         }}
       >
         <div className="drag-handle" onMouseDown={startDrag}>
@@ -457,6 +580,16 @@ function runComponentScript(component, eventName) {
         <div className="resize-handle" onMouseDown={startResize} />
       </div>
     );
+  }
+
+  function getTableRows(component) {
+    if (component.props?.dataSource === "query" && component.props?.queryId) {
+      const result = queryResults[component.props.queryId];
+      if (Array.isArray(result?.data)) return result.data;
+      return [];
+    }
+
+    return component.props?.data || [];
   }
 
   function renderComponent(component) {
@@ -476,6 +609,7 @@ function runComponentScript(component, eventName) {
           onClick={(e) => {
             e.stopPropagation();
             setSelectedComponentId(component.id);
+            setSelectedQueryId(null);
             runComponentScript(component, "onClick");
           }}
         >
@@ -485,7 +619,7 @@ function runComponentScript(component, eventName) {
     }
 
     if (component.type === "table") {
-      const rows = component.props?.data || [];
+      const rows = getTableRows(component);
 
       return componentWrapper(
         component,
@@ -499,10 +633,14 @@ function runComponentScript(component, eventName) {
           </thead>
 
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.id}>
+            {rows.map((row, rowIndex) => (
+              <tr key={row.id || rowIndex}>
                 {Object.values(row).map((value, index) => (
-                  <td key={index}>{value}</td>
+                  <td key={index}>
+                    {typeof value === "object"
+                      ? JSON.stringify(value)
+                      : String(value)}
+                  </td>
                 ))}
               </tr>
             ))}
@@ -537,6 +675,7 @@ function runComponentScript(component, eventName) {
           onClick={(e) => {
             e.stopPropagation();
             setSelectedComponentId(component.id);
+            setSelectedQueryId(null);
             runComponentScript(component, "onClick");
           }}
         />
@@ -549,7 +688,69 @@ function runComponentScript(component, eventName) {
     );
   }
 
-  function renderInspector(schema) {
+  function renderQueryInspector(schema) {
+    const query = (schema.queries || []).find((q) => q.id === selectedQueryId);
+    if (!query) return null;
+
+    const result = queryResults[query.id];
+
+    return (
+      <>
+        <h3>Query</h3>
+
+        <label className="inspector-field">
+          Name
+          <input
+            value={query.name || ""}
+            onChange={(e) => updateQuery(query.id, { name: e.target.value })}
+          />
+        </label>
+
+        <label className="inspector-field">
+          Method
+          <select
+            value={query.method || "GET"}
+            onChange={(e) => updateQuery(query.id, { method: e.target.value })}
+          >
+            <option>GET</option>
+            <option>POST</option>
+            <option>PUT</option>
+            <option>PATCH</option>
+            <option>DELETE</option>
+          </select>
+        </label>
+
+        <label className="inspector-field">
+          URL
+          <input
+            value={query.url || ""}
+            onChange={(e) => updateQuery(query.id, { url: e.target.value })}
+          />
+        </label>
+
+        {query.method !== "GET" && (
+          <label className="inspector-field">
+            Body
+            <textarea
+              value={query.body || ""}
+              onChange={(e) => updateQuery(query.id, { body: e.target.value })}
+            />
+          </label>
+        )}
+
+        <button onClick={() => runQuery(query)}>Run Query</button>
+
+        <button className="danger-button" onClick={() => deleteQuery(query.id)}>
+          Delete Query
+        </button>
+
+        <h4>Result</h4>
+        <pre>{result ? JSON.stringify(result, null, 2) : "No result yet"}</pre>
+      </>
+    );
+  }
+
+  function renderComponentInspector(schema) {
     const selectedComponent = schema.components?.find(
       (component) => component.id === selectedComponentId
     );
@@ -558,7 +759,7 @@ function runComponentScript(component, eventName) {
       return (
         <>
           <h3>Inspector</h3>
-          <p>Select a component to edit its properties.</p>
+          <p>Select a component or query.</p>
           <pre>{JSON.stringify(schema, null, 2)}</pre>
         </>
       );
@@ -618,7 +819,7 @@ function runComponentScript(component, eventName) {
                 onChange={(e) =>
                   updateComponentEvents({ onClick: e.target.value })
                 }
-                placeholder='alert("Button clicked");'
+                placeholder='const result = await queries.query1.run();'
               />
             </label>
           </>
@@ -639,6 +840,42 @@ function runComponentScript(component, eventName) {
               }
             />
           </label>
+        )}
+
+        {selectedComponent.type === "table" && (
+          <>
+            <label className="inspector-field">
+              Data Source
+              <select
+                value={selectedComponent.props?.dataSource || "static"}
+                onChange={(e) =>
+                  updateComponentProps({ dataSource: e.target.value })
+                }
+              >
+                <option value="static">Static sample data</option>
+                <option value="query">Query result</option>
+              </select>
+            </label>
+
+            {selectedComponent.props?.dataSource === "query" && (
+              <label className="inspector-field">
+                Query
+                <select
+                  value={selectedComponent.props?.queryId || ""}
+                  onChange={(e) =>
+                    updateComponentProps({ queryId: e.target.value })
+                  }
+                >
+                  <option value="">Select query</option>
+                  {(schema.queries || []).map((query) => (
+                    <option key={query.id} value={query.id}>
+                      {query.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </>
         )}
 
         {selectedComponent.type === "image" && (
@@ -666,22 +903,18 @@ function runComponentScript(component, eventName) {
                 onChange={(e) =>
                   updateComponentEvents({ onClick: e.target.value })
                 }
-                placeholder='alert("Image clicked");'
+                placeholder='const result = await queries.query1.run();'
               />
             </label>
 
             <div className="script-help">
-              Available variables:
-              <code>component</code>
+              Available:
+              <code>queries.queryId.run()</code>
               <code>props</code>
-              <code>layout</code>
-              <code>app</code>
+              <code>url</code>
+              <code>utils.openUrl()</code>
             </div>
           </>
-        )}
-
-        {selectedComponent.type === "table" && (
-          <p>Sample table editing comes later.</p>
         )}
 
         <button className="danger-button" onClick={deleteSelectedComponent}>
@@ -689,6 +922,11 @@ function runComponentScript(component, eventName) {
         </button>
       </>
     );
+  }
+
+  function renderInspector(schema) {
+    if (selectedQueryId) return renderQueryInspector(schema);
+    return renderComponentInspector(schema);
   }
 
   if (session && selectedApp) {
@@ -712,13 +950,30 @@ function runComponentScript(component, eventName) {
             <button onClick={() => addComponent("form")}>Form</button>
             <button onClick={() => addComponent("image")}>Image</button>
           </div>
+
+          <div className="builder-section">
+            <h4>Queries</h4>
+            <button onClick={addQuery}>New REST Query</button>
+
+            {(schema.queries || []).map((query) => (
+              <button
+                key={query.id}
+                onClick={() => {
+                  setSelectedQueryId(query.id);
+                  setSelectedComponentId(null);
+                }}
+              >
+                {query.name || query.id}
+              </button>
+            ))}
+          </div>
         </aside>
 
         <main className="builder-main">
           <header className="builder-header">
             <div>
               <h1>{selectedApp.name}</h1>
-              <p>Drag, resize, and add Retool-style scripts</p>
+              <p>Drag, resize, script, and run REST queries</p>
             </div>
 
             <button onClick={saveApp} disabled={saving}>
@@ -729,7 +984,10 @@ function runComponentScript(component, eventName) {
           <section className="builder-canvas">
             <div
               className="preview-panel"
-              onClick={() => setSelectedComponentId(null)}
+              onClick={() => {
+                setSelectedComponentId(null);
+                setSelectedQueryId(null);
+              }}
             >
               {schema.components?.length ? (
                 schema.components.map(renderComponent)

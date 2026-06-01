@@ -479,3 +479,15 @@ button:disabled {
   padding: 5px 7px;
   border-radius: 6px;
 }
+.inspector-field select {
+  padding: 12px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font: inherit;
+}
+
+.builder-section button {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
