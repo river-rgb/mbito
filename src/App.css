@@ -208,8 +208,8 @@ button:disabled {
 
 .builder-header {
   flex: 0 0 auto;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   margin-bottom: 14px;
@@ -460,4 +460,22 @@ button:disabled {
   position: absolute;
   box-sizing: border-box;
   overflow: visible;
+}
+.builder-header > div:first-child {
+  min-width: 0;
+}
+
+.builder-header h1 {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.builder-header p {
+  color: #6b7280;
+  margin: 4px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
