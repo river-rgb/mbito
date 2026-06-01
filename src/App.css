@@ -491,3 +491,73 @@ button:disabled {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.public-loading {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  color: #6b7280;
+}
+
+.public-runtime {
+  min-height: 100vh;
+  background: white;
+}
+
+.public-canvas {
+  position: relative;
+  min-height: 100vh;
+  background: white;
+}
+
+.runtime-component {
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.runtime-text {
+  font-size: 24px;
+  font-weight: 700;
+  overflow: auto;
+}
+
+.runtime-image {
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.runtime-button {
+  background: #2563eb;
+  color: white;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.runtime-form {
+  display: grid;
+  gap: 12px;
+  overflow: auto;
+}
+
+.runtime-form label {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.runtime-table {
+  border-collapse: collapse;
+  background: white;
+  overflow: auto;
+}
+
+.runtime-table th,
+.runtime-table td {
+  border: 1px solid #e5e7eb;
+  padding: 10px;
+  text-align: left;
+}
+
+.runtime-table th {
+  background: #f9fafb;
+}

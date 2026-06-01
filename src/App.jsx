@@ -15,7 +15,8 @@ function App() {
   const [selectedQueryId, setSelectedQueryId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [queryResults, setQueryResults] = useState({});
-
+const [publicApp, setPublicApp] = useState(null);
+const [publicLoading, setPublicLoading] = useState(true);
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
@@ -29,7 +30,34 @@ function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+useEffect(() => {
+  async function loadPublicApp() {
+    const slug = getSubdomainSlug();
 
+    if (!slug) {
+      setPublicLoading(false);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("apps")
+      .select("*")
+      .eq("slug", slug)
+      .eq("published", true)
+      .single();
+
+    if (error || !data) {
+      setPublicApp(null);
+      setPublicLoading(false);
+      return;
+    }
+
+    setPublicApp(data);
+    setPublicLoading(false);
+  }
+
+  loadPublicApp();
+}, []);
   useEffect(() => {
     if (session) fetchApps();
   }, [session]);
@@ -46,6 +74,19 @@ function App() {
     setLoading(false);
     if (error) alert(error.message);
   }
+function getSubdomainSlug() {
+  const host = window.location.hostname;
+
+  if (host === "mbito.org" || host === "www.mbito.org" || host.includes("localhost")) {
+    return null;
+  }
+
+  if (host.endsWith(".mbito.org")) {
+    return host.replace(".mbito.org", "");
+  }
+
+  return null;
+}
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -940,7 +981,143 @@ function App() {
       </>
     );
   }
+if (publicLoading) {
+  return (
+    <div className="public-loading">
+      Loading app...
+    </div>
+  );
+}
 
+if (publicApp) {
+  const schema = publicApp.app_schema || { components: [], queries: [] };
+
+  return (
+    <div className="public-runtime">
+      <div className="public-canvas">
+        {(schema.components || []).map((component) => {
+          const layout = component.layout || {};
+
+          if (component.type === "text") {
+            return (
+              <div
+                key={component.id}
+                className="runtime-component runtime-text"
+                style={{
+                  left: layout.x ?? 40,
+                  top: layout.y ?? 40,
+                  width: layout.width ?? 240,
+                  height: layout.height ?? 100,
+                }}
+              >
+                {component.props?.text}
+              </div>
+            );
+          }
+
+          if (component.type === "image") {
+            return (
+              <img
+                key={component.id}
+                className="runtime-component runtime-image"
+                src={component.props?.src}
+                alt={component.props?.alt || ""}
+                style={{
+                  left: layout.x ?? 40,
+                  top: layout.y ?? 40,
+                  width: layout.width ?? 240,
+                  height: layout.height ?? 100,
+                }}
+              />
+            );
+          }
+
+          if (component.type === "button") {
+            return (
+              <button
+                key={component.id}
+                className="runtime-component runtime-button"
+                style={{
+                  left: layout.x ?? 40,
+                  top: layout.y ?? 40,
+                  width: layout.width ?? 180,
+                  height: layout.height ?? 70,
+                }}
+              >
+                {component.props?.label}
+              </button>
+            );
+          }
+
+          if (component.type === "form") {
+            return (
+              <form
+                key={component.id}
+                className="runtime-component runtime-form"
+                style={{
+                  left: layout.x ?? 40,
+                  top: layout.y ?? 40,
+                  width: layout.width ?? 320,
+                  height: layout.height ?? 260,
+                }}
+              >
+                {(component.props?.fields || []).map((field) => (
+                  <label key={field}>
+                    {field}
+                    <input type="text" placeholder={field} />
+                  </label>
+                ))}
+
+                <button type="button">Submit</button>
+              </form>
+            );
+          }
+
+          if (component.type === "table") {
+            const rows = component.props?.data || [];
+
+            return (
+              <table
+                key={component.id}
+                className="runtime-component runtime-table"
+                style={{
+                  left: layout.x ?? 40,
+                  top: layout.y ?? 40,
+                  width: layout.width ?? 420,
+                  height: layout.height ?? 180,
+                }}
+              >
+                <thead>
+                  <tr>
+                    {Object.keys(rows[0] || {}).map((key) => (
+                      <th key={key}>{key}</th>
+                    ))}
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {rows.map((row, rowIndex) => (
+                    <tr key={row.id || rowIndex}>
+                      {Object.values(row).map((value, index) => (
+                        <td key={index}>
+                          {typeof value === "object"
+                            ? JSON.stringify(value)
+                            : String(value)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            );
+          }
+
+          return null;
+        })}
+      </div>
+    </div>
+  );
+}
   if (session && selectedApp) {
     const schema = selectedApp.app_schema || { components: [], queries: [] };
 
