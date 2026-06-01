@@ -414,14 +414,27 @@ function App() {
 
     const schema = selectedApp.app_schema || { components: [], queries: [] };
 
-    const queryApi = {};
-    for (const query of schema.queries || []) {
-      queryApi[query.id] = {
-        data: queryResults[query.id]?.data,
-        result: queryResults[query.id],
-        run: () => runQuery(query),
-      };
-    }
+const queryApi = {};
+
+for (const query of schema.queries || []) {
+  const apiObject = {
+    data: queryResults[query.id]?.data,
+    result: queryResults[query.id],
+    run: () => runQuery(query),
+  };
+
+  // access by id
+  queryApi[query.id] = apiObject;
+
+  // access by name
+  const safeName = (query.name || "")
+    .trim()
+    .replace(/[^a-zA-Z0-9_]/g, "_");
+
+  if (safeName) {
+    queryApi[safeName] = apiObject;
+  }
+}
 
     const url = {
       href: window.location.href,
