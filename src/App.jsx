@@ -512,7 +512,8 @@ if (type === "image") {
     const script = component.events?.[eventName];
     if (!script || !script.trim()) return;
 
-    const schema = selectedApp.app_schema || { components: [], queries: [] };
+const activeApp = selectedApp || publicApp;
+const schema = activeApp?.app_schema || { components: [], queries: [] };
     const queryApi = {};
 
     for (const query of schema.queries || []) {
@@ -575,7 +576,7 @@ if (type === "image") {
         component,
         component.props || {},
         component.layout || {},
-        selectedApp,
+        activeApp,
         url,
         utils,
         queryApi,
