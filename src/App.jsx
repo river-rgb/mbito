@@ -664,9 +664,9 @@ function App() {
           setSelectedQueryId(null);
         }}
       >
-        <div className="drag-handle" onMouseDown={startDrag}>
-          Drag
-        </div>
+<div className="component-content" onMouseDown={startDrag}>
+  {content}
+</div>
 
         <div className="component-content">{content}</div>
 
